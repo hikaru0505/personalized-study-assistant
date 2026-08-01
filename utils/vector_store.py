@@ -12,20 +12,21 @@ indexes at once instead of only ever having the most recent one.
 import os
 from typing import List, Dict
 
-os.environ.setdefault("USE_TF", "0")
-os.environ.setdefault("USE_TORCH", "1")
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 
 FAISS_ROOT = "faiss_index"
 os.makedirs(FAISS_ROOT, exist_ok=True)
 
-# Loaded once and reused across requests/threads.
-_embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+# FastEmbed (ONNX Runtime) instead of sentence-transformers/HuggingFaceEmbeddings
+# (PyTorch). Same LangChain Embeddings interface and no API key needed, but
+# without PyTorch's ~400-600MB import/runtime footprint - PyTorch alone was
+# enough to blow past a 512MB hosting limit (e.g. Render's free/Starter
+# tiers) before a single request was even served. BAAI/bge-small-en-v1.5
+# (FastEmbed's default model) is a similarly-sized, similarly-performing
+# small embedding model, so retrieval quality is comparable.
+_embeddings = FastEmbedEmbeddings()
 
 
 def _index_path(doc_id: str) -> str:
