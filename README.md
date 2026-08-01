@@ -86,6 +86,7 @@ study_assistant/
 ├── app.py                       # all Flask routes
 ├── requirements.txt / Procfile / render.yaml
 ├── .env.example
+│
 ├── utils/
 │   ├── llm_config.py             # single shared Groq client
 │   ├── file_reader.py / pdf_reader.py / docx_reader.py   # page-tagged extraction
@@ -100,10 +101,22 @@ study_assistant/
 │   ├── explain_styles.py         # ELI10/interview/exam/technical reformatting
 │   ├── summary_generator.py
 │   └── db.py                     # all SQLite persistence
+│
 ├── templates/                    # base.html + library/document/quiz/results/
 │                                  # flashcards/progress
-├── static/style.css, script.js   # dark mode, voice, AJAX search/explain,
+│
+├── static/
+│   ├── style.css
+│   └── script.js                 # dark mode, voice, AJAX search/explain,
 │                                  # spaced-repetition UI, study-plan checkboxes
+│
+├── screenshots/                  # application screenshots
+│   ├── analysis.png
+│   ├── home page.png
+│   ├── progress page 1.png
+│   ├── progress page 2.png
+│   └── progress-dashboard.png
+│
 ├── uploads/, faiss_index/        # gitignored, regenerated at runtime
 └── study_assistant.db            # gitignored SQLite file
 ```
