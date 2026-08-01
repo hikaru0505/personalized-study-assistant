@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}My Progress - Study Assistant{% endblock %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<header>
+  <h1>My Progress</h1>
+  <p>Aggregated across every document you've studied in this session.</p>
+</header>
+
+{% if not attempts %}
+<section class="result-card">
+  <p>No quiz attempts yet — upload a document and take a quiz to start tracking your progress here.</p>
+</section>
+{% else %}
+
+<section class="stat-grid">
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.average_score }}%</span>
+    <span class="stat-label">Average Score</span>
+  </div>
+  <div class="stat-card stat-correct">
+    <span class="stat-value">{{ stats.best_score }}%</span>
+    <span class="stat-label">Best Score</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.current_streak }}🔥</span>
+    <span class="stat-label">Current Streak</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.documents_studied }}</span>
+    <span class="stat-label">Documents Studied</span>
+  </div>
+  <div class="stat-card {{ 'stat-correct' if stats.improvement >= 0 else 'stat-wrong' }}">
+    <span class="stat-value">{{ '+' if stats.improvement >= 0 else '' }}{{ stats.improvement }}%</span>
+    <span class="stat-label">Improvement</span>
+  </div>
+</section>
+
+<section class="result-card">
+  <h2>⏱ Study Time</h2>
+  <div class="stat-grid">
+    <div class="stat-card"><span class="stat-value">{{ study_time.today }}</span><span class="stat-label">Today</span></div>
+    <div class="stat-card"><span class="stat-value">{{ study_time.week }}</span><span class="stat-label">This Week</span></div>
+    <div class="stat-card"><span class="stat-value">{{ study_time.total }}</span><span class="stat-label">Total</span></div>
+  </div>
+  <p class="hint">Based on time spent actively taking quizzes (from page load to submission), not idle browser time.</p>
+</section>
+
+<section class="result-card">
+  <h2>📊 Topic Mastery</h2>
+  {% if not topic_mastery %}
+  <p>No topic data yet.</p>
+  {% else %}
+    {% for m in topic_mastery %}
+    <div class="mastery-row">
+      <span class="mastery-label">{{ m.topic }}</span>
+      <div class="mastery-bar"><div class="mastery-fill" style="width: {{ m.pct }}%"></div></div>
+      <span class="mastery-pct">{{ m.pct }}%</span>
+      <span class="mastery-tag">{{ m.emoji }} {{ m.label }}</span>
+    </div>
+    {% endfor %}
+  {% endif %}
+</section>
+
+<section class="result-card">
+  <h2>📈 Weekly Performance</h2>
+  {% if has_weekly_data %}
+  <canvas id="weeklyChart" height="90"></canvas>
+  {% else %}
+  <p class="hint">No quiz activity in the last 7 days yet - take a quiz to start building this chart.</p>
+  {% endif %}
+</section>
+
+<section class="result-card">
+  <h2>Score Over Time (All Attempts)</h2>
+  <canvas id="scoreChart" height="100"></canvas>
+</section>
+
+<section class="result-card">
+  <h2>🏆 Achievements</h2>
+  <div class="achievement-grid">
+    {% for badge in achievements %}
+    <div class="achievement-badge {{ '' if badge.unlocked else 'locked' }}">
+      <span class="achievement-icon">{{ badge.icon }}</span>
+      <span class="achievement-name">{{ badge.name }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="result-card">
+  <h2>All Attempts</h2>
+  <div class="stat-grid">
+    <div class="stat-card"><span class="stat-value">{{ questions_attempted }}</span><span class="stat-label">Questions Attempted</span></div>
+    <div class="stat-card"><span class="stat-value">{{ documents_count }}</span><span class="stat-label">Documents</span></div>
+    <div class="stat-card stat-correct"><span class="stat-value">{{ strongest_topic or "—" }}</span><span class="stat-label">Strongest Topic</span></div>
+    <div class="stat-card stat-wrong"><span class="stat-value">{{ weakest_topic_overall or "—" }}</span><span class="stat-label">Weakest Topic</span></div>
+  </div>
+  <div class="table-scroll">
+  <table class="progress-table">
+    <thead>
+      <tr><th>Date</th><th>Document</th><th>Difficulty</th><th>Accuracy</th><th>Time</th><th>Weak Topics</th></tr>
+    </thead>
+    <tbody>
+      {% for a in attempts|reverse %}
+      <tr>
+        <td>{{ a.created_at[:16].replace('T', ' ') }}</td>
+        <td>{{ a.document_name }}</td>
+        <td>{{ (a.difficulty or '—')|capitalize }}</td>
+        <td>{{ ((a.score / a.total) * 100) | round(0) if a.total else 0 }}%</td>
+        <td>{{ (a.duration_seconds ~ 's') if a.duration_seconds is not none else '—' }}</td>
+        <td>{{ a.weak_topics | join(', ') if a.weak_topics else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<script>
+  const attempts = {{ attempts_json | safe }};
+  const labels = attempts.map((a, i) => `#${i + 1} (${a.document_name})`);
+  const scores = attempts.map(a => a.total ? Math.round((a.score / a.total) * 100) : 0);
+
+  new Chart(document.getElementById('scoreChart'), {
+    type: 'line',
+    data: { labels: labels, datasets: [{ label: 'Score %', data: scores, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.15)', tension: 0.25, fill: true }] },
+    options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } }
+  });
+
+  const weekly = {{ weekly_performance_json | safe }};
+  const weeklyCanvas = document.getElementById('weeklyChart');
+  if (weeklyCanvas) {
+    new Chart(weeklyCanvas, {
+      type: 'line',
+      data: {
+        labels: weekly.map(d => d.label),
+        datasets: [{ label: 'Avg Score %', data: weekly.map(d => d.avg), borderColor: '#15803d', backgroundColor: 'rgba(21, 128, 61, 0.15)', tension: 0.25, fill: true, spanGaps: true }]
+      },
+      options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } }
+    });
+  }
+</script>
+{% endif %}
+{% endblock %}

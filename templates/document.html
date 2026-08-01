@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}{{ document.display_name }} - Study Assistant{% endblock %}
+{% block container_class %}wide-container{% endblock %}
+
+{% block content %}
+<header>
+  <h1>{{ document.display_name }}</h1>
+  <p>{{ document.num_pages }} page{{ 's' if document.num_pages != 1 else '' }}
+    {% if is_pdf %} &middot; PDF{% else %} &middot; Word document (no page numbers - DOCX doesn't expose real pages){% endif %}</p>
+</header>
+
+<div class="workspace {{ 'workspace-split' if is_pdf else '' }}">
+
+  {% if is_pdf %}
+  <div class="workspace-pdf-pane">
+    <div class="pdf-toolbar">
+      <input type="text" id="searchBox" placeholder="Search the full document text...">
+      <button type="button" id="searchButton">Search</button>
+    </div>
+    <div id="searchResults" class="search-results"></div>
+    <iframe id="pdfFrame" class="pdf-frame" src="{{ url_for('serve_file', filename=document.filename) }}"></iframe>
+  </div>
+  {% endif %}
+
+  <div class="workspace-main-pane">
+
+    <section class="result-card">
+      <h2>Summary</h2>
+      <pre>{{ document.summary }}</pre>
+      <a href="{{ url_for('export_document', doc_id=document.id, kind='summary') }}" class="export-link">Download Summary</a>
+    </section>
+
+    <section class="result-card chat-section">
+      <h2>Ask a question</h2>
+      <div class="chat-thread">
+        {% for turn in chat_history %}
+        <div class="chat-turn">
+          <p class="chat-question">Q: {{ turn.question }}</p>
+          <p class="chat-answer">{{ turn.answer }}</p>
+          {% if turn.sources %}
+          <details class="sources">
+            <summary>Sources used ({{ turn.sources|length }})</summary>
+            {% for src in turn.sources %}
+              <div class="source-snippet">
+                <span class="source-label">
+                  Page {{ src.page }}
+                  {% if src.relevance is not none %}<span class="relevance-badge">{{ src.relevance }}% match</span>{% endif %}
+                </span>
+                <p>{{ src.snippet }}</p>
+                {% if is_pdf %}<a href="#" class="jump-to-page" data-page="{{ src.page }}">Jump to page {{ src.page }}</a>{% endif %}
+              </div>
+            {% endfor %}
+          </details>
+          {% endif %}
+          {% if loop.last %}
+          <div class="explain-styles" data-question="{{ turn.question|e }}" data-answer="{{ turn.answer|e }}">
+            <span class="explain-label">Explain differently:</span>
+            <button type="button" class="explain-btn" data-style="eli10">Like I'm 10</button>
+            <button type="button" class="explain-btn" data-style="interview">Interview</button>
+            <button type="button" class="explain-btn" data-style="exam">Exam Answer</button>
+            <button type="button" class="explain-btn" data-style="technical">Technical</button>
+            <button type="button" class="voice-btn" id="readAloudBtn" data-text="{{ turn.answer|e }}">🔊 Read Aloud</button>
+          </div>
+          <div id="explainOutput" class="explain-output"></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <span id="chat-end"></span>
+      </div>
+
+      <form method="POST" action="{{ url_for('ask_question', doc_id=document.id) }}" class="ask-form">
+        <input type="text" name="question" placeholder="Ask a question about this document..." required>
+        <button type="button" id="voiceInputBtn" title="Ask by voice">🎤</button>
+        <button type="submit">Ask</button>
+      </form>
+    </section>
+
+    <section class="result-card">
+      <h2>Quiz</h2>
+      <form method="POST" action="{{ url_for('generate_quiz_route', doc_id=document.id) }}" class="inline-form">
+        <label for="difficulty">Difficulty</label>
+        <select name="difficulty" id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+          <option value="adaptive">Adaptive (based on your past scores)</option>
+        </select>
+        <button type="submit">Generate Quiz</button>
+      </form>
+      <a href="{{ url_for('export_document', doc_id=document.id, kind='quiz') }}" class="export-link">Download Last Quiz</a>
+    </section>
+
+    <section class="result-card">
+      <h2>Flashcards</h2>
+      {% if total_flashcard_count == 0 %}
+      <p>No flashcards yet — click "Generate New Flashcards" to create your first set.</p>
+      {% else %}
+      <p>{{ due_flashcard_count }} of {{ total_flashcard_count }} card(s) due for review today.</p>
+      {% endif %}
+      <div class="inline-form">
+        <form method="POST" action="{{ url_for('generate_flashcards_route', doc_id=document.id) }}">
+          <button type="submit">Generate New Flashcards</button>
+        </form>
+        {% if due_flashcard_count > 0 %}
+        <a href="{{ url_for('review_flashcards', doc_id=document.id) }}" class="quiz-form button-link">Review Now</a>
+        {% endif %}
+      </div>
+      <a href="{{ url_for('export_document', doc_id=document.id, kind='flashcards') }}" class="export-link">Download Flashcards</a>
+    </section>
+
+    <section class="result-card">
+      <h2>{{ study_plan.title }}</h2>
+      <p class="plan-meta">
+        Priority: {{ '⭐' * study_plan.priority }}{{ '☆' * (5 - study_plan.priority) }}
+        &middot; Estimated {{ study_plan.estimated_minutes_per_day }} mins/day
+        &middot; <span id="planProgressLabel" data-doc-id="{{ document.id }}">0/{{ study_plan.days|length }} Days Completed</span>
+      </p>
+      <div class="plan-progress-bar"><div class="plan-progress-fill" id="planProgressFill" style="width:0%"></div></div>
+      <div class="study-plan-days" data-doc-id="{{ document.id }}">
+        {% for day in study_plan.days %}
+        <div class="plan-day">
+          <label>
+            <input type="checkbox" class="plan-day-checkbox" data-day="{{ day.day }}">
+            <strong>Day {{ day.day }}: {{ day.title }}</strong>
+          </label>
+          <ul>
+            {% for task in day.tasks %}<li>{{ task }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      <a href="{{ url_for('export_document', doc_id=document.id, kind='study_plan') }}" class="export-link">Download Study Plan</a>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  window.STUDY_ASSISTANT_DOC_ID = "{{ document.id }}";
+  window.STUDY_ASSISTANT_IS_PDF = {{ 'true' if is_pdf else 'false' }};
+</script>
+{% endblock %}

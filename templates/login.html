@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Login - Study Assistant{% endblock %}
+{% block content %}
+<header>
+  <h1>Login</h1>
+  <p>Logging in syncs your quiz history and progress across devices instead
+    of tying it to a single browser.</p>
+</header>
+
+<section class="result-card login-card">
+  <a class="oauth-button oauth-google" href="{{ url_for('auth_google') }}">Continue with Google</a>
+  <a class="oauth-button oauth-github" href="{{ url_for('auth_github') }}">Continue with GitHub</a>
+</section>
+{% endblock %}

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personalized Study Assistant</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="{{ url_for('home') }}" class="brand">Study Assistant</a>
+      <a href="{{ url_for('progress') }}">My Progress</a>
+    </nav>
+
+    <header>
+      <h1>Personalized Study Assistant</h1>
+      <p>Upload a PDF or Word document, ask a question, and get an AI-generated
+        answer, summary, quiz, flashcards, and a study plan that adapts to
+        what you actually get wrong.</p>
+    </header>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+      <label for="pdf">Study document (.pdf or .docx)</label>
+      <div class="file-picker">
+        <input type="file" id="pdf" name="pdf" accept=".pdf,.docx" required>
+        <label for="pdf" class="file-picker-label" id="filePickerLabel">
+          📄 Upload a PDF or DOCX to begin learning.
+        </label>
+      </div>
+
+      <label for="question">Your question about the document</label>
+      <input type="text" id="question" name="question"
+             placeholder="e.g. What are the key points in chapter 2?" required>
+
+      <button type="submit">Generate</button>
+    </form>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <p id="loadingText">Uploading...</p>
+      </div>
+    </div>
+
+    {% if answer %}
+    <section class="result-card">
+      <h2>Answer</h2>
+      <p>{{ answer }}</p>
+
+      {% if sources %}
+      <details class="sources">
+        <summary>Sources used ({{ sources|length }})</summary>
+        {% for src in sources %}
+          <div class="source-snippet">
+            <span class="source-label">
+              Chunk {{ src.chunk_index }}
+              {% if src.relevance is not none %}
+                <span class="relevance-badge">{{ src.relevance }}% relevant</span>
+              {% endif %}
+            </span>
+            <p>{{ src.snippet }}</p>
+          </div>
+        {% endfor %}
+      </details>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if summary %}
+    <section class="result-card">
+      <h2>Summary</h2>
+      <pre>{{ summary }}</pre>
+    </section>
+    {% endif %}
+
+    {% if quiz %}
+    <section class="result-card">
+      <h2>Quiz</h2>
+      <p class="hint">Answer the questions below, then submit to see your
+        score and a study plan focused on whatever you missed.</p>
+      <form method="POST" action="{{ url_for('submit_quiz') }}" class="quiz-form">
+        {% for q in quiz %}
+        {% set qidx = loop.index0 %}
+        <div class="quiz-question">
+          <p class="quiz-topic">{{ q.topic }}</p>
+          <p class="quiz-question-text">{{ loop.index }}. {{ q.question }}</p>
+          {% for letter, option_text in q.options.items() %}
+          <label class="quiz-option">
+            <input type="radio" name="q{{ qidx }}" value="{{ letter }}" required>
+            <span>{{ letter }}. {{ option_text }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% endfor %}
+        <button type="submit">Submit Quiz</button>
+      </form>
+    </section>
+    {% endif %}
+
+    {% if flashcards %}
+    <section class="result-card">
+      <h2>Flashcards</h2>
+      <pre>{{ flashcards }}</pre>
+    </section>
+    {% endif %}
+
+    {% if study_plan %}
+    <section class="result-card">
+      <h2>Study Plan</h2>
+      <pre>{{ study_plan }}</pre>
+    </section>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

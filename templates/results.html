@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Quiz Results - {{ document.display_name }}{% endblock %}
+{% block content %}
+<header>
+  <h1>Quiz Results: {{ document.display_name }}</h1>
+  <p class="hint">Difficulty: {{ difficulty|capitalize }}
+    {% if duration_seconds is not none %} &middot; Time taken: {{ (duration_seconds // 60) }}m {{ (duration_seconds % 60) }}s{% endif %}</p>
+</header>
+
+<section class="stat-grid">
+  <div class="stat-card">
+    <span class="stat-value">{{ accuracy }}%</span>
+    <span class="stat-label">Accuracy</span>
+  </div>
+  <div class="stat-card stat-correct">
+    <span class="stat-value">{{ score }}</span>
+    <span class="stat-label">Correct</span>
+  </div>
+  <div class="stat-card stat-wrong">
+    <span class="stat-value">{{ wrong }}</span>
+    <span class="stat-label">Wrong</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ weakest_topic or "—" }}</span>
+    <span class="stat-label">Weakest Topic</span>
+  </div>
+</section>
+
+{% if weak_topics %}
+<section class="result-card weak-topics-card">
+  <h2>Topics to focus on</h2>
+  <p>You scored below 60% on:</p>
+  <ul>{% for topic in weak_topics %}<li>{{ topic }}</li>{% endfor %}</ul>
+</section>
+{% else %}
+<section class="result-card">
+  <h2>Nice work</h2>
+  <p>You scored 60% or higher on every topic in this quiz.</p>
+</section>
+{% endif %}
+
+<section class="result-card">
+  <h2>Review</h2>
+  {% for item in review %}
+  <div class="review-item {{ 'correct' if item.is_correct else 'incorrect' }}">
+    <p class="quiz-topic">{{ item.topic }} &middot; <span class="qtype-badge">{{ item.type|replace('_', ' ') }}</span></p>
+    <p class="quiz-question-text">{{ loop.index }}. {{ item.question }}</p>
+
+    {% if item.type in ('mcq', 'true_false') %}
+      {% for letter, option_text in item.options.items() %}
+        <p class="review-option
+            {% if letter == item.correct %}is-correct-answer{% endif %}
+            {% if letter == item.student_answer and not item.is_correct %}is-wrong-choice{% endif %}">
+          {{ letter }}. {{ option_text }}
+          {% if letter == item.correct %} ✓ correct answer{% endif %}
+          {% if letter == item.student_answer and letter != item.correct %} ✗ your answer{% endif %}
+        </p>
+      {% endfor %}
+    {% elif item.type in ('fill_blank', 'short_answer') %}
+      <p class="review-option">Your answer: {{ item.student_answer or "(blank)" }}</p>
+      <p class="review-option is-correct-answer">Expected: {{ item.answer_text }}</p>
+    {% elif item.type == 'match' %}
+      <p class="review-option">
+        {% if item.is_correct %}✓ All pairs matched correctly{% else %}✗ One or more pairs were mismatched{% endif %}
+      </p>
+      <ul>
+        {% for pair in item.pairs %}<li>{{ pair.left }} → {{ pair.right }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+<section class="result-card">
+  <h2>Updated Study Plan</h2>
+  <p class="plan-meta">Priority: {{ '⭐' * adaptive_plan.priority }}{{ '☆' * (5 - adaptive_plan.priority) }}</p>
+  {% for day in adaptive_plan.days %}
+  <p><strong>Day {{ day.day }}: {{ day.title }}</strong></p>
+  <ul>{% for task in day.tasks %}<li>{{ task }}</li>{% endfor %}</ul>
+  {% endfor %}
+</section>
+
+{% if adaptive_flashcards %}
+<section class="result-card">
+  <h2>New Flashcards Focused on Your Weak Topics</h2>
+  {% for card in adaptive_flashcards %}
+  <p><strong>Q:</strong> {{ card.question }}<br><strong>A:</strong> {{ card.answer }}</p>
+  {% endfor %}
+</section>
+{% endif %}
+
+<a href="{{ url_for('view_document', doc_id=document.id) }}" class="back-link">Back to {{ document.display_name }}</a>
+{% endblock %}

@@ -1,0 +1,15 @@
+# Render.com deployment blueprint (https://render.com/docs/blueprint-spec)
+# Deploy: push this repo to GitHub, then on Render choose "New +" -> "Blueprint"
+# and point it at your repo. Render reads this file automatically.
+services:
+  - type: web
+    name: personalized-study-assistant
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false   # you'll be prompted to paste this in Render's dashboard
+      - key: FLASK_SECRET_KEY
+        generateValue: true

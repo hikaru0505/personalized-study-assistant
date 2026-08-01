@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Flashcards - {{ document.display_name }}{% endblock %}
+{% block content %}
+<header>
+  <h1>Flashcards: {{ document.display_name }}</h1>
+  <p class="hint">{{ due_cards|length }} card(s) due for review today.</p>
+</header>
+
+{% if not due_cards %}
+<section class="result-card">
+  <p>No cards due right now - come back later, or generate a new set from the document page.</p>
+  <a href="{{ url_for('view_document', doc_id=document.id) }}" class="back-link">Back to {{ document.display_name }}</a>
+</section>
+{% else %}
+
+<section class="result-card">
+  <div id="flashcardQueue" data-index="0">
+    {% for card in due_cards %}
+    <div class="flashcard-item" data-index="{{ loop.index0 }}" {% if not loop.first %}style="display:none"{% endif %}>
+      <p class="quiz-topic">{{ card.topic }}</p>
+      <div class="flashcard" id="flashcard-{{ loop.index0 }}">
+        <div class="flashcard-face flashcard-front">{{ card.question }}</div>
+        <div class="flashcard-face flashcard-back" style="display:none">{{ card.answer }}</div>
+      </div>
+      <button type="button" class="flip-button" data-target="flashcard-{{ loop.index0 }}">Show Answer</button>
+
+      <form method="POST" action="{{ url_for('review_flashcard', card_id=card.id) }}" class="rating-form" style="display:none">
+        <input type="hidden" name="doc_id" value="{{ document.id }}">
+        <button type="submit" name="rating" value="again" class="rating-btn rating-again">Again</button>
+        <button type="submit" name="rating" value="hard" class="rating-btn rating-hard">Hard</button>
+        <button type="submit" name="rating" value="good" class="rating-btn rating-good">Good</button>
+        <button type="submit" name="rating" value="easy" class="rating-btn rating-easy">Easy</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="hint">Card <span id="cardPosition">1</span> of {{ due_cards|length }}</p>
+</section>
+{% endif %}
+{% endblock %}

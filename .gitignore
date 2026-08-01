@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Flask / project runtime data (regenerated at runtime, don't commit)
+faiss_index/*
+!faiss_index/.gitkeep
+uploads/*
+!uploads/.gitkeep
+study_assistant.db
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/

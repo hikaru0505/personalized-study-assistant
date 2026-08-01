@@ -1,0 +1,12 @@
+flask
+langchain
+langchain-community
+langchain-groq
+langchain-text-splitters
+sentence-transformers
+faiss-cpu
+pypdf
+python-docx
+python-dotenv
+werkzeug
+gunicorn

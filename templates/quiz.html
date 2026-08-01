@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Quiz - {{ document.display_name }}{% endblock %}
+{% block content %}
+<header>
+  <h1>Quiz: {{ document.display_name }}</h1>
+  <p class="hint">Difficulty: <strong>{{ quiz.difficulty|capitalize }}</strong>
+    &middot; {{ quiz.questions|length }} questions &middot; mixed question types</p>
+</header>
+
+<section class="result-card">
+  <form method="POST" action="{{ url_for('submit_quiz', quiz_id=quiz.id) }}" class="quiz-form" id="quizForm">
+    <input type="hidden" name="start_time" id="quizStartTime">
+
+    {% for q in quiz.questions %}
+    {% set qidx = loop.index0 %}
+    <div class="quiz-question">
+      <p class="quiz-topic">{{ q.topic }} &middot; <span class="qtype-badge">{{ q.type|replace('_', ' ') }}</span></p>
+      <p class="quiz-question-text">{{ loop.index }}. {{ q.question }}</p>
+
+      {% if q.type in ('mcq', 'true_false') %}
+        {% for letter, option_text in q.options.items() %}
+        <label class="quiz-option">
+          <input type="radio" name="q{{ qidx }}" value="{{ letter }}" required>
+          <span>{{ letter }}. {{ option_text }}</span>
+        </label>
+        {% endfor %}
+
+      {% elif q.type == 'fill_blank' %}
+        <input type="text" name="q{{ qidx }}" class="quiz-text-input" placeholder="Fill in the blank" required>
+
+      {% elif q.type == 'short_answer' %}
+        <textarea name="q{{ qidx }}" class="quiz-textarea" placeholder="Your answer" required></textarea>
+
+      {% elif q.type == 'match' %}
+        <div class="match-question">
+          {% for pair in q.pairs %}
+          <div class="match-row">
+            <span class="match-left">{{ pair.left }}</span>
+            <select class="match-select" data-qidx="{{ qidx }}" data-pairidx="{{ loop.index0 }}" required>
+              <option value="">-- choose --</option>
+              {% for opt in q.pairs %}
+              <option value="{{ opt.right }}">{{ opt.right }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="q{{ qidx }}" class="match-hidden-input" data-qidx="{{ qidx }}">
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <button type="submit">Submit Quiz</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById("quizStartTime").value = Date.now();
+</script>
+{% endblock %}

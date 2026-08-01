@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}My Documents - Study Assistant{% endblock %}
+{% block content %}
+<header>
+  <h1>Personalized Study Assistant</h1>
+  <p>Upload a PDF or Word document to get an AI-generated summary, an
+    adaptive quiz, spaced-repetition flashcards, and a study plan that
+    reacts to what you actually get wrong.</p>
+</header>
+
+<section class="result-card">
+  <h2>Upload a new document</h2>
+  <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+    <div class="file-picker">
+      <input type="file" id="pdf" name="pdf" accept=".pdf,.docx" required>
+      <label for="pdf" class="file-picker-label" id="filePickerLabel">
+        📄 Upload a PDF or DOCX to begin learning.
+      </label>
+    </div>
+    <button type="submit">Upload &amp; Process</button>
+  </form>
+</section>
+
+<section class="result-card">
+  <h2>My Documents</h2>
+  {% if not documents %}
+    <p>No documents yet — upload your first PDF or DOCX above to begin learning.</p>
+  {% else %}
+    <div class="document-grid">
+      {% for doc in documents %}
+      <div class="document-card">
+        <a href="{{ url_for('view_document', doc_id=doc.id) }}" class="document-card-link">
+          <span class="document-icon">{{ '📕' if doc.file_ext == '.pdf' else '📘' }}</span>
+          <span class="document-name">{{ doc.display_name }}</span>
+          <span class="document-meta">{{ doc.num_pages }} page{{ 's' if doc.num_pages != 1 else '' }} &middot; {{ doc.uploaded_at[:10] }}</span>
+        </a>
+        <form method="POST" action="{{ url_for('delete_document', doc_id=doc.id) }}"
+              onsubmit="return confirm('Delete {{ doc.display_name }}? This cannot be undone.');">
+          <button type="submit" class="delete-button">Delete</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
